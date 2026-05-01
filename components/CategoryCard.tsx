@@ -1,0 +1,74 @@
+import type { CategoryPlaylist } from '@/types'
+
+const CATEGORY_META: Record<string, { gradient: string; emoji: string; description: string }> = {
+  'Lock In': {
+    gradient: 'linear-gradient(135deg, #4f46e5 0%, #7e22ce 100%)',
+    emoji: '🎯',
+    description: 'Focus & deep work',
+  },
+  Drive: {
+    gradient: 'linear-gradient(135deg, #f97316 0%, #dc2626 100%)',
+    emoji: '⚡',
+    description: 'High energy & momentum',
+  },
+  Glow: {
+    gradient: 'linear-gradient(135deg, #facc15 0%, #ec4899 100%)',
+    emoji: '✨',
+    description: 'Bright & sociable',
+  },
+  Unwind: {
+    gradient: 'linear-gradient(135deg, #10b981 0%, #0d9488 100%)',
+    emoji: '🌿',
+    description: 'Wind-down & rest',
+  },
+  Feels: {
+    gradient: 'linear-gradient(135deg, #8b5cf6 0%, #6b21a8 100%)',
+    emoji: '💜',
+    description: 'Emotional & reflective',
+  },
+  Edge: {
+    gradient: 'linear-gradient(135deg, #52525b 0%, #18181b 100%)',
+    emoji: '🖤',
+    description: 'Dark & intense',
+  },
+  Night: {
+    gradient: 'linear-gradient(135deg, #1d4ed8 0%, #1e1b4b 100%)',
+    emoji: '🌙',
+    description: 'Late night & atmospheric',
+  },
+}
+
+interface Props {
+  playlist: CategoryPlaylist
+  triaging?: boolean
+  selected?: boolean
+  onClick?: () => void
+}
+
+export default function CategoryCard({ playlist, triaging, selected, onClick }: Props) {
+  const meta = CATEGORY_META[playlist.name]
+
+  return (
+    <button
+      onClick={onClick}
+      className={`flex flex-col items-center justify-center gap-2 rounded-2xl p-4 h-40 w-full text-white transition-all hover:brightness-110 focus-visible:outline-none ${
+        selected
+          ? 'ring-2 ring-white/60 ring-offset-2 ring-offset-background brightness-110'
+          : ''
+      }`}
+      style={{ background: meta.gradient }}
+    >
+      <span className="text-4xl leading-none">{meta.emoji}</span>
+      <span className="font-bold text-sm text-center leading-tight tracking-wide">
+        {playlist.name}
+      </span>
+      <span className="text-xs text-white/70 font-medium">
+        {triaging && playlist.tracks.length === 0 ? (
+          <span className="inline-block h-2.5 w-12 animate-pulse rounded bg-white/20" />
+        ) : (
+          `${playlist.tracks.length} tracks`
+        )}
+      </span>
+    </button>
+  )
+}

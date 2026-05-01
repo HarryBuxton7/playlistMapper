@@ -3,6 +3,8 @@ import type { Playlist, Track } from '@/types'
 const CLIENT_ID = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID!
 
 const SCOPES = [
+  'user-read-private',
+  'user-library-read',
   'playlist-read-private',
   'playlist-read-collaborative',
   'playlist-modify-public',
@@ -162,10 +164,14 @@ export async function fetchAllPlaylists(
             ? (item.images[0] as { url: string }).url
             : null,
         trackCount:
-          typeof item.tracks === 'object' && item.tracks !== null
+          typeof item.items === 'object' && item.items !== null
+            ? ((item.items as Record<string, unknown>).total as number) ?? 0
+            : typeof item.tracks === 'object' && item.tracks !== null
             ? ((item.tracks as Record<string, unknown>).total as number) ?? 0
             : 0,
         tracks: [],
+        ownerId: (item.owner as Record<string, unknown>)?.id as string ?? '',
+        collaborative: (item.collaborative as boolean) ?? false,
       }))
 
     all.push(...batch)
@@ -178,48 +184,99 @@ export async function fetchAllPlaylists(
 
 // Fetch all tracks for a playlist (paginated).
 
+function parseTrackItem(item: Record<string, unknown>): Track | null {
+  // Feb 2026: playlist items renamed track -> item; /me/tracks still uses track
+  const track = (item?.item ?? item?.track) as Record<string, unknown> | null
+  if (!track || !track.id) return null
+  return {
+    id: track.id as string,
+    uri: track.uri as string,
+    name: track.name as string,
+    artistName:
+      Array.isArray(track.artists) && track.artists.length > 0
+        ? (track.artists[0] as { name: string }).name
+        : 'Unknown Artist',
+    albumName: (track.album as { name: string } | null)?.name ?? '',
+    durationMs: (track.duration_ms as number) ?? 0,
+    explicit: (track.explicit as boolean) ?? false,
+  }
+}
+
+// Fetch tracks for a playlist. Tries the full playlist object endpoint first
+// (embeds tracks directly) since the /tracks sub-resource is blocked in
+// Spotify Development Mode. Falls back to the tracks endpoint if the
+// playlist object also fails.
+
 export async function fetchAllTracks(token: string, playlistId: string): Promise<Track[]> {
+  // Attempt 1: GET /v1/playlists/{id} — Feb 2026: 'tracks' field renamed to 'items'
+  const playlistRes = await spotifyFetch(
+    `https://api.spotify.com/v1/playlists/${playlistId}?fields=items(items(item(id,name,uri,artists,album,duration_ms,explicit)),next,total)`,
+    token
+  )
+
+  if (playlistRes.ok) {
+    const data = await playlistRes.json()
+    const items: Record<string, unknown>[] = data?.items?.items ?? []
+    if (items.length > 0) {
+      return items.map(parseTrackItem).filter(Boolean) as Track[]
+    }
+  }
+
+  // Attempt 2: GET /v1/playlists/{id}/items — Feb 2026 replacement for /tracks
   const all: Track[] = []
-  let url: string | null =
-    `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50`
+  let url: string | null = `https://api.spotify.com/v1/playlists/${playlistId}/items?limit=50`
 
   while (url) {
     const res = await spotifyFetch(url, token)
-    if (!res.ok) throw new Error(`Failed to fetch tracks for ${playlistId}: ${res.status}`)
-    const data = await res.json()
-
-    for (const item of data.items ?? []) {
-      const track = item?.track
-      if (!track || track.type !== 'track' || !track.id) continue
-      all.push({
-        id: track.id as string,
-        uri: track.uri as string,
-        name: track.name as string,
-        artistName:
-          Array.isArray(track.artists) && track.artists.length > 0
-            ? (track.artists[0] as { name: string }).name
-            : 'Unknown Artist',
-        albumName: (track.album as { name: string } | null)?.name ?? '',
-        durationMs: (track.duration_ms as number) ?? 0,
-        explicit: (track.explicit as boolean) ?? false,
-      })
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      throw new Error(`Failed to fetch tracks for ${playlistId}: ${res.status} — ${body}`)
     }
-
+    const data = await res.json()
+    for (const item of data.items ?? []) {
+      const t = parseTrackItem(item)
+      if (t) all.push(t)
+    }
     url = data.next ?? null
   }
 
   return all
 }
 
+// Fetch the user's saved (liked) tracks — fallback when playlist tracks are
+// inaccessible due to Spotify Development Mode restrictions.
+
+export async function fetchSavedTracks(token: string, limit = 200): Promise<Track[]> {
+  const all: Track[] = []
+  let url: string | null = `https://api.spotify.com/v1/me/tracks?limit=50`
+
+  while (url && all.length < limit) {
+    const res = await spotifyFetch(url, token)
+    if (!res.ok) {
+      const body = await res.text().catch(() => '')
+      throw new Error(`Failed to fetch saved tracks: ${res.status} — ${body}`)
+    }
+    const data = await res.json()
+    for (const item of data.items ?? []) {
+      const t = parseTrackItem(item)
+      if (t) all.push(t)
+    }
+    url = data.next ?? null
+  }
+
+  return all.slice(0, limit)
+}
+
 // Create a playlist and add tracks to it (100 URIs per request max).
 
 export async function createSpotifyPlaylist(
   token: string,
-  userId: string,
+  _userId: string,
   name: string,
   uris: string[]
 ): Promise<string> {
-  const createRes = await fetch(`https://api.spotify.com/v1/users/${userId}/playlists`, {
+  // Feb 2026: POST /users/{id}/playlists removed — use POST /me/playlists
+  const createRes = await fetch(`https://api.spotify.com/v1/me/playlists`, {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ name, public: false }),
@@ -227,9 +284,10 @@ export async function createSpotifyPlaylist(
   if (!createRes.ok) throw new Error(`Failed to create playlist: ${createRes.status}`)
   const { id } = await createRes.json()
 
+  // Feb 2026: POST /playlists/{id}/tracks removed — use POST /playlists/{id}/items
   for (let i = 0; i < uris.length; i += 100) {
     const chunk = uris.slice(i, i + 100)
-    const addRes = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks`, {
+    const addRes = await fetch(`https://api.spotify.com/v1/playlists/${id}/items`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ uris: chunk }),

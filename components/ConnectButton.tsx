@@ -20,8 +20,13 @@ export default function ConnectButton() {
   }
 
   return (
-    <Button onClick={handleConnect} disabled={loading} size="lg">
-      {loading ? 'Redirecting…' : 'Connect Spotify'}
+    <Button
+      onClick={handleConnect}
+      disabled={loading}
+      size="lg"
+      className="px-10 py-6 text-base font-semibold rounded-2xl"
+    >
+      {loading ? 'Redirecting…' : 'Connect to Spotify'}
     </Button>
   )
 }

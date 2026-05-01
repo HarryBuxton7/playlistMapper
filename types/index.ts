@@ -26,6 +26,8 @@ export interface Playlist {
   coverUrl: string | null
   trackCount: number
   tracks: Track[]
+  ownerId: string
+  collaborative: boolean
 }
 
 export interface CategoryPlaylist {
