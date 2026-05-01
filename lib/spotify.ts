@@ -1,3 +1,5 @@
+import type { Playlist, Track } from '@/types'
+
 const CLIENT_ID = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID!
 
 const SCOPES = [
@@ -127,10 +129,113 @@ export async function spotifyFetch(url: string, token: string): Promise<Response
   throw new Error('Too many rate limit retries')
 }
 
-// Get current user profile
+// User profile
 
 export async function fetchUserProfile(token: string): Promise<{ id: string; display_name: string }> {
   const res = await spotifyFetch('https://api.spotify.com/v1/me', token)
   if (!res.ok) throw new Error('Failed to fetch user profile')
   return res.json()
+}
+
+// Fetch all playlists (paginated). Calls onBatch after each page so the UI
+// can render progressively without waiting for all pages.
+
+export async function fetchAllPlaylists(
+  token: string,
+  onBatch?: (batch: Playlist[], total: number) => void
+): Promise<Playlist[]> {
+  const all: Playlist[] = []
+  let url: string | null = 'https://api.spotify.com/v1/me/playlists?limit=50'
+
+  while (url) {
+    const res = await spotifyFetch(url, token)
+    if (!res.ok) throw new Error(`Failed to fetch playlists: ${res.status}`)
+    const data = await res.json()
+
+    const batch: Playlist[] = (data.items ?? [])
+      .filter(Boolean)
+      .map((item: Record<string, unknown>) => ({
+        id: item.id as string,
+        name: item.name as string,
+        coverUrl:
+          Array.isArray(item.images) && item.images.length > 0
+            ? (item.images[0] as { url: string }).url
+            : null,
+        trackCount:
+          typeof item.tracks === 'object' && item.tracks !== null
+            ? ((item.tracks as Record<string, unknown>).total as number) ?? 0
+            : 0,
+        tracks: [],
+      }))
+
+    all.push(...batch)
+    onBatch?.(batch, data.total ?? all.length)
+    url = data.next ?? null
+  }
+
+  return all
+}
+
+// Fetch all tracks for a playlist (paginated).
+
+export async function fetchAllTracks(token: string, playlistId: string): Promise<Track[]> {
+  const all: Track[] = []
+  let url: string | null =
+    `https://api.spotify.com/v1/playlists/${playlistId}/tracks?limit=50`
+
+  while (url) {
+    const res = await spotifyFetch(url, token)
+    if (!res.ok) throw new Error(`Failed to fetch tracks for ${playlistId}: ${res.status}`)
+    const data = await res.json()
+
+    for (const item of data.items ?? []) {
+      const track = item?.track
+      if (!track || track.type !== 'track' || !track.id) continue
+      all.push({
+        id: track.id as string,
+        uri: track.uri as string,
+        name: track.name as string,
+        artistName:
+          Array.isArray(track.artists) && track.artists.length > 0
+            ? (track.artists[0] as { name: string }).name
+            : 'Unknown Artist',
+        albumName: (track.album as { name: string } | null)?.name ?? '',
+        durationMs: (track.duration_ms as number) ?? 0,
+        explicit: (track.explicit as boolean) ?? false,
+      })
+    }
+
+    url = data.next ?? null
+  }
+
+  return all
+}
+
+// Create a playlist and add tracks to it (100 URIs per request max).
+
+export async function createSpotifyPlaylist(
+  token: string,
+  userId: string,
+  name: string,
+  uris: string[]
+): Promise<string> {
+  const createRes = await fetch(`https://api.spotify.com/v1/users/${userId}/playlists`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, public: false }),
+  })
+  if (!createRes.ok) throw new Error(`Failed to create playlist: ${createRes.status}`)
+  const { id } = await createRes.json()
+
+  for (let i = 0; i < uris.length; i += 100) {
+    const chunk = uris.slice(i, i + 100)
+    const addRes = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uris: chunk }),
+    })
+    if (!addRes.ok) throw new Error(`Failed to add tracks: ${addRes.status}`)
+  }
+
+  return id
 }
