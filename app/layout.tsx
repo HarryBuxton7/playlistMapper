@@ -9,8 +9,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Playlist Organiser",
-  description: "Organise your Spotify library into mood-based playlists with AI",
+  title: "Playlist Mapper",
+  description: "Map your Spotify library into mood-based playlists with AI",
 };
 
 export default function RootLayout({

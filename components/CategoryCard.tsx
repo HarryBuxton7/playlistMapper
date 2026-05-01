@@ -51,9 +51,9 @@ export default function CategoryCard({ playlist, triaging, selected, onClick }: 
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center justify-center gap-2 rounded-2xl p-4 h-40 w-full text-white transition-all hover:brightness-110 focus-visible:outline-none ${
+      className={`flex flex-col items-center justify-center gap-2 rounded-2xl p-4 h-48 w-full text-white transition-all duration-150 hover:brightness-125 hover:scale-[1.04] active:scale-[0.98] focus-visible:outline-none ${
         selected
-          ? 'ring-2 ring-white/60 ring-offset-2 ring-offset-background brightness-110'
+          ? 'ring-2 ring-white/60 ring-offset-2 ring-offset-background brightness-110 scale-[1.04]'
           : ''
       }`}
       style={{ background: meta.gradient }}

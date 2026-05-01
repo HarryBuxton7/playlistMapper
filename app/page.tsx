@@ -51,6 +51,7 @@ export default function Home() {
 
   const [userId, setUserId] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<CategoryName | null>(null)
+  const [playlistsExpanded, setPlaylistsExpanded] = useState(false)
 
   const [addingAll, setAddingAll] = useState(false)
   const [addAllProgress, setAddAllProgress] = useState({ done: 0, total: 0 })
@@ -163,6 +164,7 @@ export default function Home() {
     setPhase('idle')
     setUserId(null)
     setSelectedCategory(null)
+    setPlaylistsExpanded(false)
     setAddingAll(false)
     setAllAdded(false)
     setAddError(null)
@@ -214,21 +216,23 @@ export default function Home() {
   // ── Landing ──────────────────────────────────────────────────────────────
   if (!connected) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center gap-10 px-6">
+      <main className="flex min-h-screen flex-col items-center px-6" style={{ paddingTop: '28vh' }}>
         <div className="text-center space-y-5">
           <h1 className="text-6xl sm:text-8xl font-bold tracking-tight leading-none">
             Playlist
             <br />
             <span className="bg-gradient-to-r from-primary via-purple-400 to-violet-300 bg-clip-text text-transparent">
-              Organiser
+              Mapper
             </span>
           </h1>
           <p className="text-muted-foreground text-lg max-w-sm mx-auto leading-relaxed">
-            AI sorts your entire Spotify library into 7 mood-based playlists.
+            AI maps your entire Spotify library into 7 mood-based playlists.
           </p>
         </div>
-        {authError && <p className="text-destructive text-sm">Auth error: {authError}</p>}
-        <ConnectButton />
+        {authError && <p className="text-destructive text-sm mt-4">Auth error: {authError}</p>}
+        <div className="mt-10">
+          <ConnectButton />
+        </div>
       </main>
     )
   }
@@ -258,13 +262,23 @@ export default function Home() {
 
         {/* Playlist section */}
         <section className="space-y-3">
-          {playlists.length > 0 && (
+          <div className="flex items-center justify-between gap-4">
             <p className="text-base text-muted-foreground font-medium">
-              {totalTracks} tracks across {playlists.length} playlists
+              {playlists.length > 0
+                ? `${totalTracks} tracks across ${playlists.length} playlists`
+                : isFetching ? 'Loading playlists…' : ''}
             </p>
-          )}
+            {playlists.length > 6 && (
+              <button
+                onClick={() => setPlaylistsExpanded((v) => !v)}
+                className="text-sm text-muted-foreground hover:text-primary transition-colors whitespace-nowrap shrink-0 font-medium"
+              >
+                {playlistsExpanded ? 'Show less ↑' : `+${playlists.length - 6} more`}
+              </button>
+            )}
+          </div>
           <PlaylistGrid
-            playlists={playlists}
+            playlists={playlistsExpanded ? playlists : playlists.slice(0, 6)}
             loading={isFetching && playlists.length === 0}
           />
         </section>
@@ -272,7 +286,7 @@ export default function Home() {
         {/* Triage progress */}
         {isTriaging && (
           <ProgressBar
-            label={`Sorting ${trackCount} tracks with Claude…`}
+            label="Creating your playlists…"
             done={triageProgress.done}
             total={triageProgress.total}
           />
@@ -306,7 +320,7 @@ export default function Home() {
                       {cp.tracks.length} tracks
                     </span>
                   </p>
-                  <div className="divide-y divide-border max-h-72 overflow-y-auto">
+                  <div className="divide-y divide-border max-h-72 overflow-y-auto pr-3 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-white/20">
                     {cp.tracks.length === 0 ? (
                       <p className="py-6 text-base text-muted-foreground text-center">No tracks yet</p>
                     ) : (
