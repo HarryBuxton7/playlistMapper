@@ -20,8 +20,8 @@ interface Props {
 export default function PlaylistGrid({ playlists, loading }: Props) {
   if (loading) {
     return (
-      <div className="grid grid-cols-6 gap-2">
-        {Array.from({ length: 6 }).map((_, i) => (
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-2 sm:px-6">
+        {Array.from({ length: 3 }).map((_, i) => (
           <SkeletonCard key={i} />
         ))}
       </div>
@@ -31,7 +31,7 @@ export default function PlaylistGrid({ playlists, loading }: Props) {
   if (playlists.length === 0) return null
 
   return (
-    <div className="grid grid-cols-6 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 px-2 sm:px-6">
       {playlists.map((pl) => (
         <PlaylistCard key={pl.id} playlist={pl} />
       ))}

@@ -22,13 +22,13 @@ import type { Playlist, Track, CategoryPlaylist, CategoryName } from '@/types'
 type Phase = 'idle' | 'fetching-playlists' | 'fetching-tracks' | 'triaging' | 'done'
 
 const CATEGORY_META_EMOJI: Record<CategoryName, string> = {
-  'Lock In': '🎯',
-  Drive:     '⚡',
-  Glow:      '✨',
-  Unwind:    '🌿',
-  Feels:     '💜',
-  Edge:      '🖤',
-  Night:     '🌙',
+  Flow:   '🎯',
+  Rush:   '⚡',
+  Glow:   '✨',
+  Unwind: '🌿',
+  Soul:   '💜',
+  Edge:   '🖤',
+  Night:  '🌙',
 }
 
 function buildEmptyCategoryPlaylists(): CategoryPlaylist[] {
@@ -116,7 +116,7 @@ export default function Home() {
         )
       }
 
-      let triageTracks = [...deduped.values()].slice(0, 50)
+      let triageTracks = [...deduped.values()].slice(0, 100)
 
       if (triageTracks.length === 0) {
         try {
@@ -218,7 +218,7 @@ export default function Home() {
     return (
       <main className="flex min-h-screen flex-col items-center px-6" style={{ paddingTop: '28vh' }}>
         <div className="text-center space-y-5">
-          <h1 className="text-6xl sm:text-8xl font-bold tracking-tight leading-none">
+          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-bold tracking-tight leading-none">
             Playlist
             <br />
             <span className="bg-gradient-to-r from-primary via-purple-400 to-violet-300 bg-clip-text text-transparent">
@@ -243,12 +243,12 @@ export default function Home() {
   const totalTracks = playlists.reduce((sum, p) => sum + p.trackCount, 0)
 
   return (
-    <main className="min-h-screen py-10">
-      <div className="max-w-5xl mx-auto px-6 space-y-8">
+    <main className="min-h-screen py-6 sm:py-10">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 space-y-6 sm:space-y-8">
 
         {/* Disconnect */}
         <div className="flex justify-end">
-          <Button variant="ghost" size="sm" onClick={handleDisconnect}>
+          <Button variant="ghost" size="sm" className="min-h-[44px] px-4" onClick={handleDisconnect}>
             Disconnect
           </Button>
         </div>
@@ -268,17 +268,17 @@ export default function Home() {
                 ? `${totalTracks} tracks across ${playlists.length} playlists`
                 : isFetching ? 'Loading playlists…' : ''}
             </p>
-            {playlists.length > 6 && (
+            {playlists.length > 4 && (
               <button
                 onClick={() => setPlaylistsExpanded((v) => !v)}
                 className="text-sm text-muted-foreground hover:text-primary transition-colors whitespace-nowrap shrink-0 font-medium"
               >
-                {playlistsExpanded ? 'Show less ↑' : `+${playlists.length - 6} more`}
+                {playlistsExpanded ? 'Show less ↑' : `+${playlists.length - 4} more`}
               </button>
             )}
           </div>
           <PlaylistGrid
-            playlists={playlistsExpanded ? playlists : playlists.slice(0, 6)}
+            playlists={playlistsExpanded ? playlists : playlists.slice(0, 4)}
             loading={isFetching && playlists.length === 0}
           />
         </section>
@@ -295,7 +295,7 @@ export default function Home() {
         {/* Category grid */}
         {(isTriaging || phase === 'done') && (
           <section className="space-y-4">
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+            <div className="grid grid-cols-4 gap-2 lg:grid-cols-7">
               {categoryPlaylists.map((cp) => (
                 <CategoryCard
                   key={cp.name}
@@ -325,9 +325,9 @@ export default function Home() {
                       <p className="py-6 text-base text-muted-foreground text-center">No tracks yet</p>
                     ) : (
                       cp.tracks.map((t) => (
-                        <div key={t.id} className="flex items-baseline gap-4 py-3">
+                        <div key={t.id} className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-4 py-3">
                           <p className="text-base font-medium truncate flex-1">{t.name}</p>
-                          <p className="text-sm text-muted-foreground truncate shrink-0">{t.artistName}</p>
+                          <p className="text-sm text-muted-foreground truncate sm:shrink-0">{t.artistName}</p>
                         </div>
                       ))
                     )}

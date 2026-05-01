@@ -1,11 +1,11 @@
 export const CATEGORY_NAMES = [
-  'Lock In',
-  'Drive',
-  'Glow',
-  'Unwind',
-  'Feels',
+  'Rush',
   'Edge',
+  'Glow',
   'Night',
+  'Flow',
+  'Soul',
+  'Unwind',
 ] as const
 
 export type CategoryName = (typeof CATEGORY_NAMES)[number]
