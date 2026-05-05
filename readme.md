@@ -1,6 +1,6 @@
 https://playlistmapper.com/
 
-This a a project to create a playlist organizer for spotify
+This a project to create a playlist organizer for spotify
 
 It connects to spotify, fetches all playlists and tracks, and then uses claude to triage the tracks into 7 categories that appropriately catagorise music.
 
