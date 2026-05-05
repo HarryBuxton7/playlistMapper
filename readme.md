@@ -2,7 +2,7 @@ https://playlistmapper.com/
 
 This a a project to create a playlist organizer for spotify
 
-It connects to spotify, fetches all playlists and tracks, and then uses anthropic to triage the tracks into 7 categories that appropriately catagorise music.
+It connects to spotify, fetches all playlists and tracks, and then uses claude to triage the tracks into 7 categories that appropriately catagorise music.
 
 This was created using Claude Code and spec driven development. In the jspec folder you can find the spec for the project.
 
